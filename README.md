@@ -26,7 +26,7 @@ Each project is located in its own directory with a detailed README file, explai
 Some of the projects included are:
 
 1. **Tic Tac Toe Game**: A simple tic-tac-toe game built using Pygame.
-2. 
+2. Python Finance Tracker , a Simple Fincance Budget Tracket made completely in Python 
 More projects will be added as they are developed.
 
 ## Installation
