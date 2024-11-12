@@ -1,4 +1,4 @@
-# Python Projects
+2# Python Projects
 
 Welcome to the **Python Projects** repository! This repository contains a collection of diverse Python-based projects, ranging from beginner-friendly programs to more advanced applications, including games, data science scripts, automation, and more. These projects serve as excellent resources for learning Python or expanding your programming skills.
 
@@ -27,7 +27,7 @@ Some of the projects included are:
 
 1. **Tic Tac Toe Game**: A simple tic-tac-toe game built using Pygame.
 2. Python Finance Tracker , a Simple Fincance Budget Tracket made completely in Python 
-More projects will be added as they are developed.
+3. Waste Seggrigator In Python , Tells if waste is Recyclable , Compostable or Non-Recyclable
 
 ## Installation
 
