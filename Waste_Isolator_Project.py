@@ -1,20 +1,13 @@
-        #Project Idea: Waste Segregation Helper
-
-""" 
-Aim:
-Create a Waste Segregation Helper that helps users correctly classify and dispose of their household waste into categories 
-like recyclables, compostable, and non-recyclables. 
-The app will suggest which type of waste belongs to which category, improving environmental sustainability.
-
-"""
-
+import ttkbootstrap as ttk
+from ttkbootstrap.constants import *
 import tkinter as tk
-from tkinter import messagebox, ttk
-import csv
+from tkinter import ttk as tkttk
+from tkinter import messagebox
+import requests
 import os
+import csv
 import matplotlib.pyplot as plt
 
-# Predefined waste categories with parent categories and items
 waste_categories = {
     "Electronics": {
         "phone": "Recyclable",
@@ -392,13 +385,12 @@ waste_categories = {
     }
 }
 
-# Example of how to access the categories and items
 for category, items in waste_categories.items():
     print(f"Category: {category}")
     for item, classification in items.items():
         print(f"  {item}: {classification}")
 
-# Data persistence file
+# Data file
 data_file = 'waste_data.csv'
 
 # Create the file if it doesn't exist
@@ -407,29 +399,38 @@ if not os.path.exists(data_file):
         writer = csv.writer(file)
         writer.writerow(["Waste Type", "Category", "Parent Category"])
 
-# Function to add waste to data file
+# Function to add waste to the data file
 def add_waste_to_file(waste, category, parent_category):
     with open(data_file, 'a', newline='') as file:
         writer = csv.writer(file)
         writer.writerow([waste, category, parent_category])
 
-# Function to display a pie chart of waste categories
+# Function to show waste statistics as a pie chart
 def show_stats():
     counts = {"Recyclable": 0, "Compostable": 0, "Non-Recyclable": 0}
-    with open(data_file, 'r') as file:
-        reader = csv.DictReader(file)
-        for row in reader:
-            counts[row["Category"]] += 1
+    try:
+        with open(data_file, 'r') as file:
+            reader = csv.DictReader(file)
+            for row in reader:
+                if row["Category"] in counts:
+                    counts[row["Category"]] += 1
+    except Exception as e:
+        messagebox.showerror("Error", f"Error reading data: {e}")
+        return
 
     labels = list(counts.keys())
     sizes = list(counts.values())
 
     plt.figure(figsize=(7, 7))
-    plt.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=140, colors=["#66c2a5", "#fc8d62", "#8da0cb"])
+    plt.pie(
+        sizes, labels=labels, autopct='%1.1f%%', startangle=140,
+        colors=["#66c2a5", "#fc8d62", "#8da0cb"]
+    )
+    plt.title("Waste Categories Distribution", fontsize=14)
     plt.axis('equal')  # Equal aspect ratio ensures the pie is drawn as a circle.
     plt.show()
 
-# Function to clear all saved data
+# Function to clear all data
 def clear_data():
     os.remove(data_file)
     with open(data_file, 'w', newline='') as file:
@@ -442,18 +443,38 @@ def clear_data():
 def update_table():
     for row in table.get_children():
         table.delete(row)
+    try:
+        with open(data_file, 'r') as file:
+            reader = csv.DictReader(file)
+            for row in reader:
+                table.insert(
+                    "", "end", values=(
+                        row.get("Waste Type", "Unknown"),
+                        row.get("Category", "Unknown"),
+                        row.get("Parent Category", "Unknown")
+                    )
+                )
+    except Exception as e:
+        print(f"Error updating table: {e}")
 
-    with open(data_file, 'r') as file:
-        reader = csv.DictReader(file)
-        for row in reader:
-            table.insert("", "end", values=(row["Waste Type"], row["Category"], row["Parent Category"]))
-
-# Function to update the sub-items dropdown based on the selected category
+# Function to update sub-items based on category
+# Function to update sub-items based on category
 def update_subitems(*args):
     selected_category = category_var.get()
+    
+    # Clear current sub-items in the dropdown
+    subitem_menu['values'] = []
+    
     if selected_category in waste_categories:
-        subitem_menu.config(values=list(waste_categories[selected_category].keys()))
-    subitem_menu.current(0)  # Set to the first value
+        # Update sub-items with the category's subcategories
+        subcategories = list(waste_categories[selected_category].keys())
+        subitem_menu['values'] = subcategories
+        if subcategories:
+            subitem_var.set(subcategories[0])  # Set the first subcategory as default
+    else:
+        subitem_menu['values'] = ["No items available"]
+        subitem_var.set("No items available")
+
 
 # Main function to classify waste
 def classify_waste():
@@ -473,72 +494,147 @@ def classify_waste():
         add_waste_to_file(waste, category, parent_category)
         update_table()
 
-# Initialize the Tkinter app
-app = tk.Tk()
+def fetch_global_waste_stats():
+    try:
+        # Replace this with your API call
+        data = {
+            "Recyclable": 12000,
+            "Compostable": 8000,
+            "Non-Recyclable": 5000,
+        }
+
+        # Extract keys (categories) and values (amounts)
+        categories = list(data.keys())
+        values = list(data.values())
+
+        # Create a figure with two subplots: one for the bar chart and one for the pie chart
+        fig, axes = plt.subplots(1, 2, figsize=(14, 6))  # Two side-by-side plots
+
+        # Bar Chart
+        axes[0].bar(categories, values, color=['#66c2a5', '#fc8d62', '#8da0cb'])
+        axes[0].set_title("Global Waste Statistics (Bar Chart)", fontsize=14)
+        axes[0].set_xlabel("Waste Type", fontsize=12)
+        axes[0].set_ylabel("Amount (tons)", fontsize=12)
+        axes[0].tick_params(axis='x', labelsize=10)
+        axes[0].tick_params(axis='y', labelsize=10)
+
+        # Pie Chart
+        axes[1].pie(values, labels=categories, autopct='%1.1f%%', startangle=140,
+                    colors=["#66c2a5", "#fc8d62", "#8da0cb"])
+        axes[1].set_title("Global Waste Statistics (Pie Chart)", fontsize=14)
+
+        # Adjust layout and show the plots
+        plt.tight_layout()
+        plt.show()
+
+    except Exception as e:
+        messagebox.showerror("Error", f"Failed to fetch statistics: {e}")
+
+# Function to show recycling tips
+def show_recycling_tips():
+    # Create a new window for the tips
+    tips_window = tk.Toplevel(app)
+    tips_window.title("Common Recycling Practices")
+    tips_window.geometry("400x400")
+    tips_window.configure(bg="#f0f8ff")
+
+    # Add a header
+    tk.Label(
+        tips_window, 
+        text="Common Ways to Recycle Waste", 
+        font=("Arial", 16, "bold"), 
+        bg="#f0f8ff", 
+        fg="#4682b4"
+    ).pack(pady=10)
+
+    # Add a list of recycling tips
+    tips = [
+        "1. Sort waste into categories: paper, plastic, metal, glass, etc.",
+        "2. Rinse food containers before recycling to avoid contamination.",
+        "3. Flatten cardboard boxes to save space.",
+        "4. Avoid mixing non-recyclable items with recyclables.",
+        "5. Check local recycling guidelines for accepted materials.",
+        "6. Reuse items like jars, bags, and containers whenever possible.",
+        "7. Donate or recycle old electronics at e-waste collection centers.",
+        "8. Compost organic waste like food scraps and yard waste."
+    ]
+
+    # Display each tip in the window
+    for tip in tips:
+        tk.Label(
+            tips_window, 
+            text=tip, 
+            font=("Arial", 12), 
+            bg="#f0f8ff", 
+            fg="#333", 
+            wraplength=350, 
+            justify="left"
+        ).pack(anchor="w", padx=10, pady=5)
+
+    # Add a close button
+    tk.Button(
+        tips_window, 
+        text="Close", 
+        command=tips_window.destroy, 
+        font=("Arial", 12, "bold"), 
+        bg="#fc8d62", 
+        fg="white"
+    ).pack(pady=20)
+
+# Initialize the app
+app = ttk.Window(themename="flatly")
 app.title("Waste Segregation Helper")
 app.geometry("800x600")
-app.configure(bg="#f0f8ff")  # Light blue background
 
-# Styling for the interface
-style = ttk.Style()
-style.configure("TButton", font=("Arial", 12, "bold"))
-style.configure("TLabel", font=("Arial", 12))
-
-# Header label
-header_label = tk.Label(app, text="Waste Segregation Helper", font=("Arial", 20, "bold"), bg="#f0f8ff", fg="#4682b4")
+# Header
+header_label = ttk.Label(app, text="Waste Segregation Helper", font=("Helvetica", 24, "bold"), bootstyle=PRIMARY)
 header_label.pack(pady=20)
 
-# UI components
-tk.Label(app, text="Select a Category:", font=("Arial", 12), bg="#f0f8ff", fg="#333").pack(pady=10)
+# Dropdown Frame
+dropdown_frame = ttk.Frame(app, padding=10)
+dropdown_frame.pack(fill=X)
 
-# Category Dropdown
-category_var = tk.StringVar()
-category_menu = ttk.Combobox(app, textvariable=category_var, values=list(waste_categories.keys()), font=("Arial", 12))
-category_menu.pack(pady=5)
+category_var = ttk.StringVar()
+ttk.Label(dropdown_frame, text="Select a Category:", font=("Helvetica", 12)).grid(row=0, column=0, padx=5, pady=5)
+category_menu = ttk.Combobox(dropdown_frame, textvariable=category_var, values=list(waste_categories.keys()))
+category_menu.grid(row=0, column=1, padx=5, pady=5)
 category_menu.current(0)
+category_menu.bind('<<ComboboxSelected>>', update_subitems)  
 
-# Sub-item Dropdown
-subitem_var = tk.StringVar()
-subitem_menu = ttk.Combobox(app, textvariable=subitem_var, font=("Arial", 12))
-subitem_menu.pack(pady=5)
+subitem_var = ttk.StringVar()
+ttk.Label(dropdown_frame, text="Select an Item:", font=("Helvetica", 12)).grid(row=1, column=0, padx=5, pady=5)
+subitem_menu = ttk.Combobox(dropdown_frame, textvariable=subitem_var)
+subitem_menu.grid(row=1, column=1, padx=5, pady=5)
 
-# Bind the category menu to update sub-items on selection
-category_menu.bind("<<ComboboxSelected>>", update_subitems)
-update_subitems()  # Initialize sub-items for the first category
 
-# Classify waste button
-classify_btn = tk.Button(app, text="Classify Waste", command=classify_waste, font=("Arial", 12, "bold"), 
-                         bg="#4682b4", fg="black", width=20)
-classify_btn.pack(pady=10)
+# Buttons
+button_frame = ttk.Frame(app, padding=10)
+button_frame.pack(fill=X)
 
-# Result display label
-result_label = tk.Label(app, text="", font=("Arial", 12, "bold"), bg="#f0f8ff", fg="#4682b4")
+ttk.Button(button_frame, text="Global Waste Stats", command=fetch_global_waste_stats, bootstyle=WARNING).grid(row=0, column=4, padx=10)
+
+ttk.Button(button_frame, text="Classify Waste", command=classify_waste, bootstyle=SUCCESS).grid(row=0, column=0, padx=10)
+ttk.Button(button_frame, text="Show Statistics", command=show_stats, bootstyle=INFO).grid(row=0, column=1, padx=10)
+ttk.Button(button_frame, text="Recycling Tips", command=show_recycling_tips, bootstyle=SECONDARY).grid(row=0, column=2, padx=10)
+ttk.Button(button_frame, text="Clear Data", command=clear_data, bootstyle=DANGER).grid(row=0, column=3, padx=10)
+
+# Result
+result_label = ttk.Label(app, text="", font=("Helvetica", 12, "bold"), bootstyle=PRIMARY)
 result_label.pack(pady=10)
 
-# Stats button
-stats_btn = tk.Button(app, text="Show Waste Statistics", command=show_stats, font=("Arial", 12, "bold"), 
-                      bg="#66c2a5", fg="black", width=20)
-stats_btn.pack(pady=5)
-
-# Clear data button
-clear_btn = tk.Button(app, text="Clear All Waste Data", command=clear_data, font=("Arial", 12, "bold"), 
-                      bg="#fc8d62", fg="black", width=20)
-clear_btn.pack(pady=5)
-
-# Table to display categorized waste data
+# Table
 columns = ("Waste Type", "Category", "Parent Category")
 table = ttk.Treeview(app, columns=columns, show="headings", height=10)
 table.heading("Waste Type", text="Waste Type")
 table.heading("Category", text="Category")
 table.heading("Parent Category", text="Parent Category")
-table.pack(pady=20)
+table.pack(pady=20, padx=10, fill=X)
 
-# Update the table with existing data on startup
+# Footer
+footer_label = ttk.Label(app, text="Help segregate waste properly!", font=("Helvetica", 10), bootstyle="light")
+footer_label.pack(pady=10)
+
+# Initialize table with existing data
 update_table()
 
-# Footer label
-footer_label = tk.Label(app, text="Help segregate waste properly!", font=("Arial", 10), bg="#f0f8ff", fg="#333")
-footer_label.pack(pady=20)
-
-# Run the app
 app.mainloop()
